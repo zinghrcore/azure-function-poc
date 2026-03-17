@@ -1,0 +1,12 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+    "SQL_CONNECTION_STRING": "Driver={ODBC Driver 17 for SQL Server};Server=tcp:172.16.2.4,1433;Database=ELCM_FBINCQA5;Uid=Owner_Nikhilteam;Pwd=Mac#2580;Encrypt=yes;TrustServerCertificate=yes",
+    "QUEUE_NAME": "attendance-queue",
+    "API_URL": "https://mservices-dev.zinghr.com/ztp/phil/attendance-change/",
+    "SUBSCRIPTION_NAME": "FBINCQA5",
+    "API_TIMEOUT": "180"
+  }
+}
