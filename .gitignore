@@ -1,11 +1,11 @@
+# -------------------------------
+# Azure Functions / .NET
+# -------------------------------
 bin/
+obj/
 **/bin/
-!Modules/**
-obj
-csx
-.vs
-edge
-Publish
+.vs/
+Publish/
 
 *.user
 *.suo
@@ -17,20 +17,25 @@ project.lock.json
 /TestResults
 
 /tools/NuGet.exe
-/App_Data
-/secrets
-/data
-.secrets
-appsettings.json
+
+# -------------------------------
+# App Config (IMPORTANT)
+# -------------------------------
 local.settings.json
+appsettings.json
 
-node_modules
-dist
+# -------------------------------
+# Node / Frontend
+# -------------------------------
+node_modules/
+dist/
 
-# Local python packages
+# -------------------------------
+# Python
+# -------------------------------
 .python_packages/
 
-# Python Environments
+# Virtual environments
 .env
 .venv
 env/
@@ -39,22 +44,21 @@ ENV/
 env.bak/
 venv.bak/
 
-# Byte-compiled / optimized / DLL files
+# Bytecode
 __pycache__/
 *.py[cod]
 *$py.class
 
-# Azurite artifacts
+# -------------------------------
+# Azurite (Local Storage Emulator)
+# -------------------------------
 __blobstorage__
 __queuestorage__
 __azurite_db*__.json
 azurite/
 *.log
 
-azurite/
-*.log
-__azurite_db_*.json
-.venv/
-__pycache__/
-local.settings.json
+# -------------------------------
+# IDE / Editor
+# -------------------------------
 .vscode/
