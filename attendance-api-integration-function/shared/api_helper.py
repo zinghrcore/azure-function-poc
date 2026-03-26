@@ -1,7 +1,7 @@
 import requests
 import logging
 
-API_URL = "https://mservices-qa.zinghr.com/ztp/phil/attendance-change/"
+API_URL = "https://mservices-dev.zinghr.com/ztp/india/attendance-change/"
 API_TIMEOUT = 180
 
 HEADERS = {

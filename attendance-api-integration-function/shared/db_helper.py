@@ -3,10 +3,10 @@ import pandas as pd
 from datetime import datetime
 
 SQL_CONFIG = {
-    "server": "tcp:172.16.2.4,1433",
-    "database": "ELCM_FBINCQA5",
-    "username": "Owner_Nikhilteam",
-    "password": "Mac#2580",
+    "server": "tcp:172.16.5.19,1433",
+    "database": "ELCM_BURGERKINGGROWTH",
+    "username": "TEMP",
+    "password": "Temp@123",
     "driver": "{ODBC Driver 18 for SQL Server}"
 }
 
@@ -63,6 +63,7 @@ def get_updated_records(last_ts):
     	    ED.ED_EMPID AS EmployeeID,
             EV.EmpCode AS EmployeeCode,
             EV.Date AS AttendanceDate,
+            EV.Date AS ApprovedDate,
             CASE
                 WHEN EV.AttValue1 = -1 THEN 0
                 WHEN EV.AttValue1 IS NULL THEN 0
@@ -85,6 +86,7 @@ def get_updated_records(last_ts):
             ED.ED_EMPID AS EmployeeID,
             EV.EmpCode AS EmployeeCode,
             EV.Date AS AttendanceDate,
+            EV.Date AS ApprovedDate,
             CASE
                 WHEN EV.AttValue1 = -1 THEN 0
                 WHEN EV.AttValue1 IS NULL THEN 0
@@ -116,13 +118,14 @@ def create_payload(batch):
 
     payload = {
         "records": [],
-        "subscription_name": "FBINCQA5"
+        "subscription_name": "BURGERKINGGROWTH"
     }
 
     for r in batch:
         payload["records"].append({
             "Attendance": float(r["Attendance"]),
             "AttendanceDate": str(r["AttendanceDate"]),
+            "ApprovedDate": str(r["ApprovedDate"]),
             "EarlyMinutes": int(r["EarlyMinutes"]),
             "EmployeeCode": r["EmployeeCode"],
             "EmployeeID": int(r["EmployeeID"]),

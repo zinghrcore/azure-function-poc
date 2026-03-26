@@ -41,7 +41,7 @@ def attendance_timer(myTimer: func.TimerRequest):
 
         logging.info(f"Total records fetched: {len(records)}")
 
-        batch_size = 50
+        batch_size = 250
 
         for i in range(0, len(records), batch_size):
 
