@@ -15,7 +15,7 @@ from shared.db_helper import (
 
 from shared.queue_helper import send_to_queue
 from shared.api_helper import call_attendance_api
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from decimal import Decimal
 
 app = func.FunctionApp()
@@ -107,6 +107,8 @@ def process_overtime_batch(azqueue: func.QueueMessage):
             datetime.fromisoformat(str(r["updateDate_timestamp"]))
             for r in records
         )
+
+        max_ts = max_ts + timedelta(microseconds=1)
 
         overtime_data = []
 

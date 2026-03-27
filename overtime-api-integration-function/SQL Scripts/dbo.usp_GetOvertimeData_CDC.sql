@@ -78,7 +78,6 @@ BEGIN
         INNER JOIN #ChangedRecords CR
             ON CR.EmployeeCode = ED.ED_EMPID
             AND CR.Date = RZ.Date
-
     ) rz
     INNER JOIN TNA.OT_ParameterMaster pm 
         ON rz.Code = pm.Name;
