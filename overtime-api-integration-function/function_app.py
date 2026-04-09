@@ -117,17 +117,25 @@ def process_overtime_batch(azqueue: func.QueueMessage):
             if not row.get("EmployeeCode") or not row.get("Date"):
                 continue
 
-                overtime_data.append({
+            overtime_data.append({
+                "employee_id": int(row.get("EmployeeCode")),
+                "date": str(row.get("Date"))[:10],
                 "code": row.get("Code"),
                 "conversion": row.get("Conversion"),
-                "date": str(row.get("Date"))[:10],
-                "employee_id": str(row.get("EmployeeCode")),
                 "ot": float(row.get("ExtraHrs", 0)),
                 "ot_pay": float(row.get("ExtraTimePay", 0))
-                })
+            })
+
+        # ---------------- CLEAN DATA ----------------
+
+        cleaned_records = []
+
+        for r in records:
+            r.pop("updateDate_timestamp", None)
+            cleaned_records.append(r)
 
         final_payload = {
-            "overtime_data": overtime_data,
+            "overtime_data": overtime_data,   # ✅ CORRECT
             "subscription_name": "FBINCQA5"
         }
 

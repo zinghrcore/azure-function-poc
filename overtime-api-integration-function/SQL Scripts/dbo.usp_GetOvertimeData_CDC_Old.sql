@@ -1,5 +1,5 @@
 
---EXEC dbo.usp_GetOvertimeData @LastTimestamp = '2026-03-25 12:05:26.973'
+--EXEC dbo.usp_GetOvertimeData @LastTimestamp = '2026-03-18 14:39:05.337'
 
 CREATE OR ALTER PROCEDURE dbo.usp_GetOvertimeData
     @LastTimestamp DATETIME = NULL

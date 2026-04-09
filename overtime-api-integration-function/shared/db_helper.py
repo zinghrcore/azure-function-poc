@@ -40,8 +40,8 @@ def get_last_timestamp():
 def update_last_timestamp(new_timestamp):
 
     query = """
-    INSERT INTO dbo.overtime_watermark (last_timestamp)
-    VALUES (?)
+    Update dbo.overtime_watermark 
+    Set last_timestamp = ?
     """
 
     conn = get_db_connection()
