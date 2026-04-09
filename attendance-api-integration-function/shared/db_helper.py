@@ -1,23 +1,43 @@
+import os
+import json
 import pyodbc
 import pandas as pd
 from datetime import datetime
 
-SQL_CONFIG = {
-    "server": "tcp:172.16.5.19,1433",
-    "database": "ELCM_BURGERKINGGROWTH",
-    "username": "TEMP",
-    "password": "Temp@123",
-    "driver": "{ODBC Driver 18 for SQL Server}"
-}
+# ---------------- DB CONFIG ----------------
 
-def get_db_connection():
+SQL_CONFIG = json.loads(os.getenv("SQL_CONFIG", "[]"))
+
+# SQL_CONFIG = [{
+#     "name": "ELCM_BURGERKINGGROWTH",
+#     "server": "tcp:172.16.5.19,1433",
+#     "database": "ELCM_BURGERKINGGROWTH",
+#     "username": "Temp",
+#     "password": "Temp@123",
+#     "driver": "{ODBC Driver 18 for SQL Server}",
+#     "subscription_name": "BURGERKINGGROWTH"
+#     },
+#     {
+#     "name": "ELCM_SBFCP2",
+#     "server": "tcp:172.16.5.7,1433",
+#     "database": "ELCM_SBFCP2",
+#     "username": "Temp",
+#     "password": "Temp@123",
+#     "driver": "{ODBC Driver 18 for SQL Server}",
+#     "subscription_name": "SBFCP2"
+#     }
+# ]
+
+# ---------------- CONNECTION ----------------
+
+def get_db_connection(db):
 
     conn_str = (
-        f"DRIVER={SQL_CONFIG['driver']};"
-        f"SERVER={SQL_CONFIG['server']};"
-        f"DATABASE={SQL_CONFIG['database']};"
-        f"UID={SQL_CONFIG['username']};"
-        f"PWD={SQL_CONFIG['password']};"
+        f"DRIVER={db['driver']};"
+        f"SERVER={db['server']};"
+        f"DATABASE={db['database']};"
+        f"UID={db['username']};"
+        f"PWD={db['password']};"
         "Encrypt=yes;TrustServerCertificate=yes"
     )
 
@@ -25,85 +45,56 @@ def get_db_connection():
 
 # ---------------- WATERMARK ----------------
 
-def get_last_timestamp():
+def get_last_timestamp(db, source_db):
 
-    query = "SELECT TOP 1 last_timestamp FROM Attendance_Watermark ORDER BY ID DESC"
-    conn = get_db_connection()
-    df = pd.read_sql_query(query, conn)
+    query = """
+    SELECT TOP 1 last_timestamp 
+    FROM Attendance_Watermark 
+    WHERE source_db = ? 
+    ORDER BY ID DESC
+    """
+
+    conn = get_db_connection(db)
+    df = pd.read_sql_query(query, conn, params=[source_db])
     conn.close()
 
     if not df.empty:
         return df.iloc[0]["last_timestamp"]
+
     return None
 
 
-def update_last_timestamp(new_timestamp):
+def update_last_timestamp(db, new_timestamp, source_db):
 
     query = """
-    INSERT INTO Attendance_Watermark (last_timestamp)
-    VALUES (?)
+    UPDATE Attendance_Watermark
+    SET last_timestamp = ?
+    WHERE source_db = ?
     """
 
-    conn = get_db_connection()
+    conn = get_db_connection(db)
     cursor = conn.cursor()
-    cursor.execute(query, (new_timestamp,))
-    conn.commit()
-    conn.close()
 
+    cursor.execute(query, (new_timestamp, source_db))
+    conn.commit()
+    cursor.close()
+    conn.close()
 
 # ---------------- GET RECORDS ----------------
 
-def get_updated_records(last_ts):
-    conn = get_db_connection()
+def get_updated_records(db, last_ts):
+
+    conn = get_db_connection(db)
     cursor = conn.cursor()
 
     if last_ts:
-        query = """
-        SELECT
-    	    ED.ED_EMPID AS EmployeeID,
-            EV.EmpCode AS EmployeeCode,
-            EV.Date AS AttendanceDate,
-            EV.Date AS ApprovedDate,
-            CASE
-                WHEN EV.AttValue1 = -1 THEN 0
-                WHEN EV.AttValue1 IS NULL THEN 0
-                ELSE EV.AttValue1
-            END AS Attendance,
-            0 AS EarlyMinutes,
-            0 AS LateMinutes,
-            EV.UpdatedDate AS updateDate_timestamp
-        FROM TNA.Rostering_Z2 EV (NOLOCK)
-        INNER JOIN dbo.ReqRec_EmployeeDetails ED (NOLOCK)
-            ON EV.EmpCode = ED.ED_EMPCode
-        WHERE EV.UpdatedDate > ?
-        """
-
-        cursor.execute(query, last_ts)
+        cursor.execute("EXEC dbo.uspGetAttendanceData @LastTimestamp = ?", last_ts)
     else:
+        cursor.execute("EXEC dbo.uspGetAttendanceData @LastTimestamp = NULL")
 
-        query = """
-        SELECT
-            ED.ED_EMPID AS EmployeeID,
-            EV.EmpCode AS EmployeeCode,
-            EV.Date AS AttendanceDate,
-            EV.Date AS ApprovedDate,
-            CASE
-                WHEN EV.AttValue1 = -1 THEN 0
-                WHEN EV.AttValue1 IS NULL THEN 0
-                ELSE EV.AttValue1
-            END AS Attendance,
-            0 AS EarlyMinutes,
-            0 AS LateMinutes,
-            EV.UpdatedDate AS updateDate_timestamp
-        FROM TNA.Rostering_Z2 EV (NOLOCK)
-        INNER JOIN dbo.ReqRec_EmployeeDetails ED (NOLOCK)
-            ON EV.EmpCode = ED.ED_EMPCode
-        WHERE EV.Date >= DATEADD(day,-90,GETDATE())
-        """
-        cursor.execute(query)
     columns = [column[0] for column in cursor.description]
-    records = []
 
+    records = []
     for row in cursor.fetchall():
         records.append(dict(zip(columns, row)))
 
@@ -111,51 +102,33 @@ def get_updated_records(last_ts):
 
     return records
 
-
-# ---------------- PAYLOAD ----------------
-
-def create_payload(batch):
-
-    payload = {
-        "records": [],
-        "subscription_name": "BURGERKINGGROWTH"
-    }
-
-    for r in batch:
-        payload["records"].append({
-            "Attendance": float(r["Attendance"]),
-            "AttendanceDate": str(r["AttendanceDate"]),
-            "ApprovedDate": str(r["ApprovedDate"]),
-            "EarlyMinutes": int(r["EarlyMinutes"]),
-            "EmployeeCode": r["EmployeeCode"],
-            "EmployeeID": int(r["EmployeeID"]),
-            "LateMinutes": int(r["LateMinutes"]),
-
-            "updateDate_timestamp": str(r["updateDate_timestamp"])
-        })
-
-    return payload
-
-
 # ---------------- LOGGING ----------------
 
-def log_batch(batch_id, batch_size, status, details):
+def log_batch(db, batch_size, status, details,IsBatchComplete,payload):
 
-    conn = get_db_connection()
+    conn = get_db_connection(db)
     cursor = conn.cursor()
+
+    if not isinstance(details, str):
+        details = json.dumps(details, default=str)
+
+    if not isinstance(payload, str):
+        payload = json.dumps(payload, default=str)
+
     query = """
     INSERT INTO Attendance_Log
-    (Timestamp,BatchID,BatchSize,Status,Details)
-    VALUES (?,?,?,?,?)
+    (Timestamp,BatchSize,Status,Details,IsBatchComplete,payload)
+    VALUES (?,?,?,?,?,?)
     """
 
     cursor.execute(
         query,
         datetime.now(),
-        batch_id,
         batch_size,
         status,
-        details[:1000]
+        details[:1000],
+        IsBatchComplete,
+        payload
     )
 
     conn.commit()
