@@ -238,7 +238,8 @@ BEGIN
 	SELECT @cols = STRING_AGG(QUOTENAME(GPP_PropertyCode), ',')
 	FROM (SELECT DISTINCT GPP_PropertyCode FROM #FinalData) AS x;
 	        
-	SET  @cols =ELCM_CommonCore.ZTP.ProperCaseCSV(@cols);
+	--SET  @cols =ELCM_CommonCore.ZTP.ProperCaseCSV(@cols);
+	SET  @cols =ZTP.ProperCaseCSV(@cols);
 	        
 	---PRINT @cols
 	        

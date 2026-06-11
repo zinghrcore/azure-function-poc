@@ -1,14 +1,12 @@
 import requests
 import logging
-
-API_URL = "https://mservices-dev.zinghr.com/ztp/phil/new_joinee/"
-API_TIMEOUT = 180
+from shared.config import API_URL, API_TIMEOUT
 
 HEADERS = {
     "Content-Type": "application/json"
 }
 
-def call_attendance_api(payload):
+def call_onboard_api(payload):
 
     try:
         logging.info("Calling API...")

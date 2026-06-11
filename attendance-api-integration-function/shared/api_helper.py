@@ -5,9 +5,6 @@ import logging
 API_URL = os.getenv("API_URL")
 API_TIMEOUT = int(os.getenv("API_TIMEOUT", "180"))
 
-# API_URL = "https://mservices-dev.zinghr.com/ztp/india/attendance-change/"
-# API_TIMEOUT = 180
-
 HEADERS = {
     "Content-Type": "application/json"
 }

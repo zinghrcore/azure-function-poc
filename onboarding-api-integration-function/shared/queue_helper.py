@@ -1,8 +1,7 @@
 import json
 import os
+from shared.config import QUEUE_NAME
 from azure.storage.queue import QueueClient
-
-QUEUE_NAME = "onboarding-queue"
 
 def send_to_queue(message):
 

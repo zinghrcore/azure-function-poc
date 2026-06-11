@@ -8,26 +8,6 @@ from datetime import datetime
 
 SQL_CONFIG = json.loads(os.getenv("SQL_CONFIG", "[]"))
 
-# SQL_CONFIG = [{
-#     "name": "ELCM_BURGERKINGGROWTH",
-#     "server": "tcp:172.16.5.19,1433",
-#     "database": "ELCM_BURGERKINGGROWTH",
-#     "username": "Temp",
-#     "password": "Temp@123",
-#     "driver": "{ODBC Driver 18 for SQL Server}",
-#     "subscription_name": "BURGERKINGGROWTH"
-#     },
-#     {
-#     "name": "ELCM_SBFCP2",
-#     "server": "tcp:172.16.5.7,1433",
-#     "database": "ELCM_SBFCP2",
-#     "username": "Temp",
-#     "password": "Temp@123",
-#     "driver": "{ODBC Driver 18 for SQL Server}",
-#     "subscription_name": "SBFCP2"
-#     }
-# ]
-
 # ---------------- CONNECTION ----------------
 
 def get_db_connection(db):

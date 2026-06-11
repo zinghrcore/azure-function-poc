@@ -1,14 +1,7 @@
 import pyodbc
 import pandas as pd
 from datetime import datetime
-
-SQL_CONFIG = {
-    "server": "tcp:172.16.2.4,1433",
-    "database": "ELCM_FBINCQA5",
-    "username": "Owner_Nikhilteam",
-    "password": "Mac#2580",
-    "driver": "{ODBC Driver 17 for SQL Server}"
-}
+from shared.config import SQL_CONFIG
 
 def get_db_connection():
 
@@ -40,8 +33,8 @@ def get_last_timestamp():
 def update_last_timestamp(new_timestamp):
 
     query = """
-    INSERT INTO dbo.onboarding_watermark (last_timestamp)
-    VALUES (?)
+    Update dbo.onboarding_watermark 
+    set last_timestamp = ?
     """
 
     conn = get_db_connection()
@@ -72,14 +65,14 @@ def get_onboarding_data(last_ts):
 
 # ---------------- LOGGING ----------------
 
-def log_batch(batch_size, status, details):
+def log_batch(batch_size, status, details,IsBatchComplete,Payload):
 
     conn = get_db_connection()
     cursor = conn.cursor()
     query = """
     INSERT INTO dbo.Onboarding_Log
-    (Timestamp,BatchSize,Status,Details)
-    VALUES (?,?,?,?)
+    (Timestamp,BatchSize,Status,Details,IsBatchComplete,Payload)
+    VALUES (?,?,?,?,?,?)
     """
 
     cursor.execute(
@@ -87,7 +80,9 @@ def log_batch(batch_size, status, details):
         datetime.now(),
         batch_size,
         status,
-        details[:1000]
+        details[:1000],
+        IsBatchComplete,
+        Payload
     )
 
     conn.commit()

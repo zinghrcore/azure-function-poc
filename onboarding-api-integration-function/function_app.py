@@ -1,10 +1,16 @@
 import azure.functions as func
 import logging
 import json
-import uuid
-import time
-from datetime import datetime
+from datetime import datetime, date
 from collections import defaultdict
+from decimal import Decimal
+
+from shared.config import (
+    SCHEDULE,
+    BATCH_SIZE,
+    SUBSCRIPTION_NAME,
+    COUNTRY
+)
 
 from shared.db_helper import (
     get_last_timestamp,
@@ -14,23 +20,27 @@ from shared.db_helper import (
 )
 
 from shared.queue_helper import send_to_queue
-from shared.api_helper import call_attendance_api
-from datetime import datetime, date
-from decimal import Decimal
+from shared.api_helper import call_onboard_api
+from shared.payload_builder import transform_records
 
 app = func.FunctionApp()
 
-# ---------------- TIMER TRIGGER ----------------
 
-@app.timer_trigger(schedule="0 */5 * * * *", arg_name="myTimer")
+# =========================================================
+# ---------------- TIMER TRIGGER ---------------------------
+# =========================================================
+
+@app.timer_trigger(schedule=SCHEDULE, arg_name="myTimer")
 def onboarding_timer(myTimer: func.TimerRequest):
 
     logging.info("========== ONBOARDING TIMER STARTED ==========")
 
     try:
+        # Step 1: Get last watermark
         last_ts = get_last_timestamp()
         logging.info(f"Last watermark timestamp: {last_ts}")
 
+        # Step 2: Fetch records from SP
         records = get_onboarding_data(last_ts)
 
         if not records:
@@ -39,6 +49,7 @@ def onboarding_timer(myTimer: func.TimerRequest):
 
         logging.info(f"Total records fetched: {len(records)}")
 
+        # Step 3: Group by EmployeeCode
         emp_groups = defaultdict(list)
 
         for r in records:
@@ -46,7 +57,8 @@ def onboarding_timer(myTimer: func.TimerRequest):
 
         grouped_records = list(emp_groups.values())
 
-        batch_size = 1
+        # Step 4: Batch processing
+        batch_size = BATCH_SIZE
 
         for i in range(0, len(grouped_records), batch_size):
 
@@ -83,7 +95,9 @@ def onboarding_timer(myTimer: func.TimerRequest):
     logging.info("========== ONBOARDING TIMER FINISHED ==========")
 
 
-# ---------------- QUEUE TRIGGER ----------------
+# =========================================================
+# ---------------- QUEUE TRIGGER ---------------------------
+# =========================================================
 
 @app.queue_trigger(
     arg_name="azqueue",
@@ -99,80 +113,50 @@ def process_onboarding_batch(azqueue: func.QueueMessage):
         records = payload.get("records", [])
 
         if not records:
+            logging.warning("Empty batch received")
             return
 
         batch_size = len(records)
 
-        max_ts = max(
-            datetime.fromisoformat(str(r["updateDate_timestamp"]))
-            for r in records
-        )
+        # Step 1: Get max timestamp for watermark update
+        try:
+            max_ts = max(
+                datetime.fromisoformat(str(r.get("updateDate_timestamp")))
+                for r in records
+                if r.get("updateDate_timestamp") is not None
+            )
+        except Exception:
+            max_ts = datetime.now()
 
-        emp_data = []
+        # Step 2: Transform based on COUNTRY
+        emp_data = transform_records(records, COUNTRY)
 
-        for row in records:
-
-            emp_data.append({
-                "DOJ": str(row.get("DOJ", ""))[:10],
-                "from_date": str(row.get("FromDate", ""))[:10],
-
-                "absent_deduction_applicable": int(row.get("Absentdeductionapplicable", 0)),
-                "country_id": int(row.get("CountryId", 0)),
-                "employee_code": str(row.get("EmployeeCode", "")),
-                "employee_id": int(row.get("EmployeeID", 0)),
-                "exemption": int(row.get("Exemption", 0)),
-                "gender": int(row.get("Gender", 0)),
-
-                "income_tax_applicable": int(row.get("Incometaxapplicable", 0)),
-                "leave_encash_applicable": int(row.get("LeenPayApp", 0)),
-                "ot_applicable": int(row.get("Otapplicable", 1)),
-
-                "monthly_rate": float(row.get("MonthlyRate", 0)),
-                "yearly_rate": float(row.get("YearlyRate", 0)),
-
-                "payhead_category_id": int(row.get("PayHeadCategoryID", 0)),
-                "payhead_code": str(row.get("PayheadCode", "")).lower(),
-                "payhead_id": int(row.get("PayheadId", 0)),
-
-                "pag_ibig_hdmf_employee": int(row.get("Pagibighdmfemployee", 0)),
-                "pag_ibig_hdmf_employer": int(row.get("Pagibighdmfemployer", 0)),
-
-                "philhealth_employee": int(row.get("Philhealthemployee", 0)),
-                "philhealth_employer": int(row.get("Philhealthemployer", 0)),
-
-                "sss_ecr_contri": int(row.get("Sssecercontri", 0)),
-                "sss_employee": int(row.get("Sssemployee", 0)),
-                "sss_employer": int(row.get("Sssemployer", 0)),
-
-                "voluntary_employee_contribution_app": int(row.get("Voluntaryemployeecontributionapp", 0)),
-                "workers_investment_and_savings_program_app": int(row.get("Workersinvestmentandsavingsprogramapp", 0)),
-
-                "w_tax": int(row.get("Wtax", 0))
-            })
-
+        # Step 3: Final payload
         final_payload = {
             "emp_data": emp_data,
-            "subscription_name": "FBINCQA5"
+            "subscription_name": SUBSCRIPTION_NAME
         }
 
-        logging.info(f"Final Payload: {json.dumps(final_payload)}")
+        logging.info(f"Final Payload Sample: {json.dumps(final_payload)[:1000]}")
 
-        status_code, response = call_attendance_api(final_payload)
+        # Step 4: Call API
+        status_code, response = call_onboard_api(final_payload)
 
         logging.info(f"API Status: {status_code}")
         logging.info(f"API Response: {response}")
 
+        # Step 5: Logging & watermark
         if status_code == 200:
 
-            log_batch(batch_size, "SUCCESS", json.dumps(final_payload))
+            log_batch(batch_size, "SUCCESS","",1,json.dumps(final_payload))
             update_last_timestamp(max_ts)
 
         else:
-            log_batch(batch_size, "FAILED", response)
-            raise Exception(f"API failed: {status_code}")
+            log_batch(batch_size, "FAILED",response,0,json.dumps(final_payload))
+            raise Exception(f"API failed with status {status_code}")
 
     except Exception as e:
-        logging.error(str(e))
+        logging.error(f"Queue processing error: {str(e)}")
         raise
 
     logging.info("========== ONBOARDING QUEUE FINISHED ==========")

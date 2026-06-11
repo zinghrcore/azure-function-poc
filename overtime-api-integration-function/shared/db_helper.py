@@ -4,10 +4,10 @@ from datetime import datetime
 
 SQL_CONFIG = {
     "server": "tcp:172.16.2.4,1433",
-    "database": "ELCM_FBINCQA5",
+    "database": "ELCM_BURGERKINGQA",
     "username": "Owner_Nikhilteam",
     "password": "Mac#2580",
-    "driver": "{ODBC Driver 17 for SQL Server}"
+    "driver": "{ODBC Driver 18 for SQL Server}"
 }
 
 def get_db_connection():

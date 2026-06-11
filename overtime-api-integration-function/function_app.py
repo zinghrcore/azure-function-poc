@@ -135,8 +135,8 @@ def process_overtime_batch(azqueue: func.QueueMessage):
             cleaned_records.append(r)
 
         final_payload = {
-            "overtime_data": overtime_data,   # ✅ CORRECT
-            "subscription_name": "FBINCQA5"
+            "overtime_data": overtime_data,
+            "subscription_name": "BURGERKINGQA"
         }
 
         logging.info(f"Final Payload: {json.dumps(final_payload)}")

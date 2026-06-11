@@ -12,8 +12,8 @@
   "extensions": {
     "queues": {
       "messageEncoding": "none",
-      "batchSize": 5,
-      "newBatchThreshold": 2,
+      "batchSize": 1,
+      "newBatchThreshold": 1,
       "maxDequeueCount": 1
     }
   },
