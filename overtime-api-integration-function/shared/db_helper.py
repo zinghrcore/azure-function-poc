@@ -1,23 +1,23 @@
+import os
+import json
 import pyodbc
 import pandas as pd
 from datetime import datetime
 
-SQL_CONFIG = {
-    "server": "tcp:172.16.2.4,1433",
-    "database": "ELCM_BURGERKINGQA",
-    "username": "Owner_Nikhilteam",
-    "password": "Mac#2580",
-    "driver": "{ODBC Driver 18 for SQL Server}"
-}
+# ---------------- DB CONFIG ----------------
 
-def get_db_connection():
+SQL_CONFIG = json.loads(os.getenv("SQL_CONFIG", "[]"))
+
+# ---------------- CONNECTION ----------------
+
+def get_db_connection(db):
 
     conn_str = (
-        f"DRIVER={SQL_CONFIG['driver']};"
-        f"SERVER={SQL_CONFIG['server']};"
-        f"DATABASE={SQL_CONFIG['database']};"
-        f"UID={SQL_CONFIG['username']};"
-        f"PWD={SQL_CONFIG['password']};"
+        f"DRIVER={db['driver']};"
+        f"SERVER={db['server']};"
+        f"DATABASE={db['database']};"
+        f"UID={db['username']};"
+        f"PWD={db['password']};"
         "Encrypt=yes;TrustServerCertificate=yes"
     )
 
@@ -25,11 +25,17 @@ def get_db_connection():
 
 # ---------------- WATERMARK ----------------
 
-def get_last_timestamp():
+def get_last_timestamp(db, source_db):
 
-    query = "SELECT TOP 1 last_timestamp FROM dbo.overtime_watermark ORDER BY ID DESC"
-    conn = get_db_connection()
-    df = pd.read_sql_query(query, conn)
+    query = """
+    SELECT TOP 1 last_timestamp 
+    FROM dbo.overtime_watermark 
+    WHERE source_db = ? 
+    ORDER BY ID DESC
+    """
+    
+    conn = get_db_connection(db)
+    df = pd.read_sql_query(query, conn, params=[source_db])
     conn.close()
 
     if not df.empty:
@@ -37,33 +43,39 @@ def get_last_timestamp():
     return None
 
 
-def update_last_timestamp(new_timestamp):
+def update_last_timestamp(db, new_timestamp, source_db):
 
     query = """
     Update dbo.overtime_watermark 
     Set last_timestamp = ?
+    WHERE source_db = ?
     """
 
-    conn = get_db_connection()
+    conn = get_db_connection(db)
     cursor = conn.cursor()
-    cursor.execute(query, (new_timestamp,))
+
+    cursor.execute(query, (new_timestamp,source_db))
     conn.commit()
+    cursor.close()
     conn.close()
 
 # ---------------- GET RECORDS ----------------
 
-def get_overtime_data(last_ts):
+def get_overtime_data(db, last_ts):
 
-    conn = get_db_connection()
+    conn = get_db_connection(db)
     cursor = conn.cursor()
 
-    cursor.execute("EXEC dbo.usp_GetOvertimeData @LastTimestamp = ?", last_ts)
+    if last_ts:
+        cursor.execute("EXEC dbo.usp_GetOvertimeData @LastTimestamp = ?", last_ts)
+    else:
+        cursor.execute("EXEC dbo.usp_GetOvertimeData @LastTimestamp = NULL")
 
     columns = [column[0] for column in cursor.description]
-    records = [dict(zip(columns, row)) for row in cursor.fetchall()]
-    # records = []
-    # for row in cursor.fetchall():
-    #    records.append(dict(zip(columns, row)))
+
+    records = []
+    for row in cursor.fetchall():
+        records.append(dict(zip(columns, row)))
 
     conn.close()
 
@@ -71,14 +83,21 @@ def get_overtime_data(last_ts):
 
 # ---------------- LOGGING ----------------
 
-def log_batch(batch_size, status, details):
+def log_batch(db,batch_size, status, details,IsBatchComplete,payload):
 
-    conn = get_db_connection()
+    conn = get_db_connection(db)
     cursor = conn.cursor()
+
+    if not isinstance(details, str):
+        details = json.dumps(details, default=str)
+
+    if not isinstance(payload, str):
+        payload = json.dumps(payload, default=str)
+
     query = """
     INSERT INTO dbo.overtime_Log
-    (Timestamp,BatchSize,Status,Details)
-    VALUES (?,?,?,?)
+    (Timestamp,BatchSize,Status,Details,IsBatchComplete,payload)
+    VALUES (?,?,?,?,?,?)
     """
 
     cursor.execute(
@@ -86,7 +105,9 @@ def log_batch(batch_size, status, details):
         datetime.now(),
         batch_size,
         status,
-        details[:1000]
+        details,
+        IsBatchComplete,
+        payload
     )
 
     conn.commit()

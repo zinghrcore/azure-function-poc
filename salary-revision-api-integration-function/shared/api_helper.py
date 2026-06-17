@@ -1,20 +1,14 @@
-import os
 import requests
 import logging
-
-API_URL = os.getenv("API_URL")
-API_TIMEOUT = int(os.getenv("API_TIMEOUT", "180"))
+from shared.config import API_URL, API_TIMEOUT
 
 HEADERS = {
     "Content-Type": "application/json"
 }
 
-def call_attendance_api(payload):
+def call_salaryrevision_api(payload):
 
-    try:        
-        if not API_URL:
-            raise Exception("API_URL is not configured")
-        
+    try:
         logging.info("Calling API...")
 
         response = requests.post(

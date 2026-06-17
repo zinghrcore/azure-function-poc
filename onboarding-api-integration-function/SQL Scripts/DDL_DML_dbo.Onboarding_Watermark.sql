@@ -6,5 +6,5 @@ CREATE TABLE dbo.onboarding_watermark
 	[source_db] VARCHAR(50)
 );
 
---Insert Into dbo.onboarding_watermark ([last_timestamp],[source_db]) Values('2026-04-21 12:56:28.697','ELCM_MPICUATSG')
+Insert Into dbo.onboarding_watermark ([last_timestamp],[source_db]) Values(NULL,'ELCM_FASTLOGISTICSSGUAT1')
 
