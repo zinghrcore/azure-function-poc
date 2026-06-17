@@ -1,6 +1,5 @@
 import os
 import requests
-import logging
 
 HEADERS = {
     "Content-Type": "application/json"

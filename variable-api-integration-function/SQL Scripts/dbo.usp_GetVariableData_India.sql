@@ -85,6 +85,8 @@ SET XACT_ABORT ON;
 	DECLARE @OrgTbl VARCHAR(100)
 	SET @OrgTbl = '##Orgtbl'
 
+	DROP TABLE IF EXISTS ##Orgtbl
+
 	DECLARE @AttributeColumnTax VARCHAR(MAX)
 
 	IF OBJECT_ID('tempdb..#AttributeTable') IS NOT NULL DROP TABLE #AttributeTable
@@ -206,8 +208,6 @@ SET XACT_ABORT ON;
 	ORDER  BY ED.ED_EMPID
 
 	DROP TABLE IF EXISTS ##Temp2
-
-	IF OBJECT_ID('tempdb..' + @OrgTbl) IS NOT NULL
-		EXEC('DROP TABLE ' + @OrgTbl)
+	DROP TABLE IF EXISTS ##Orgtbl
 
 END

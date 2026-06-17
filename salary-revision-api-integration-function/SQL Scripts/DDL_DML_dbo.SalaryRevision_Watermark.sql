@@ -6,5 +6,5 @@ CREATE TABLE dbo.salaryrevision_watermark
 	[source_db] VARCHAR(50)
 );
 
---Insert Into dbo.salaryrevision_watermark ([last_timestamp],[source_db]) Values(NULL,'ELCM_SBFCP3')
+--Insert Into dbo.salaryrevision_watermark ([last_timestamp],[source_db]) Values(NULL,'ELCM_SBFCP2')
 

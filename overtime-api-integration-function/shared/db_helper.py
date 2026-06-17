@@ -105,7 +105,7 @@ def log_batch(db,batch_size, status, details,IsBatchComplete,payload):
         datetime.now(),
         batch_size,
         status,
-        details,
+        details[:1000],
         IsBatchComplete,
         payload
     )

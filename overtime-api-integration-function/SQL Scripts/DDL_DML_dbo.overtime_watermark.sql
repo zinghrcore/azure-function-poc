@@ -6,5 +6,5 @@ CREATE TABLE dbo.overtime_watermark
 	[source_db] VARCHAR(50)
 );
 
---INSERT INTO dbo.overtime_watermark ([last_timestamp],[source_db]) VALUES ('2026-04-14 15:33:45.050','ELCM_FBINCQA5')
+--INSERT INTO dbo.overtime_watermark ([last_timestamp],[source_db]) VALUES (NULL,'ELCM_SBFCP3')
 

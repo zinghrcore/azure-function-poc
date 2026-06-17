@@ -1,13 +1,18 @@
 import os
+import json
 
 # ---------------- DATABASE ----------------
-SQL_CONFIG = {
-    "server": os.getenv("DB_SERVER"),
-    "database": os.getenv("DB_NAME"),
-    "username": os.getenv("DB_USER"),
-    "password": os.getenv("DB_PASSWORD"),
-    "driver": os.getenv("DB_DRIVER", "{ODBC Driver 18 for SQL Server}")
-}
+#SQL_CONFIG = {
+#    "server": os.getenv("DB_SERVER"),
+#    "database": os.getenv("DB_NAME"),
+#    "username": os.getenv("DB_USER"),
+#    "password": os.getenv("DB_PASSWORD"),
+#    "driver": os.getenv("DB_DRIVER", "{ODBC Driver 18 for SQL Server}")
+#}
+
+DATABASES = json.loads(
+    os.getenv("DATABASES", "[]")
+)
 
 # ---------------- API ----------------
 API_URL = os.getenv("API_URL")
@@ -21,5 +26,5 @@ SCHEDULE = os.getenv("TIMER_SCHEDULE", "0 */5 * * * *")
 BATCH_SIZE = int(os.getenv("BATCH_SIZE", "1"))
 
 # ---------------- APP ----------------
-SUBSCRIPTION_NAME = os.getenv("SUBSCRIPTION_NAME")
-COUNTRY = os.getenv("COUNTRY")
+#SUBSCRIPTION_NAME = os.getenv("SUBSCRIPTION_NAME")
+#COUNTRY = os.getenv("COUNTRY")

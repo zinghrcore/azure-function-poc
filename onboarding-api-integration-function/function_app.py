@@ -8,8 +8,7 @@ from decimal import Decimal
 from shared.config import (
     SCHEDULE,
     BATCH_SIZE,
-    SUBSCRIPTION_NAME,
-    COUNTRY
+    DATABASES
 )
 
 from shared.db_helper import (
@@ -25,7 +24,6 @@ from shared.payload_builder import transform_records
 
 app = func.FunctionApp()
 
-
 # =========================================================
 # ---------------- TIMER TRIGGER ---------------------------
 # =========================================================
@@ -35,65 +33,66 @@ def onboarding_timer(myTimer: func.TimerRequest):
 
     logging.info("========== ONBOARDING TIMER STARTED ==========")
 
-    try:
-        # Step 1: Get last watermark
-        last_ts = get_last_timestamp()
-        logging.info(f"Last watermark timestamp: {last_ts}")
+    for db in DATABASES:
 
-        # Step 2: Fetch records from SP
-        records = get_onboarding_data(last_ts)
+        logging.info(f"Processing DB: {db['name']}")
 
-        if not records:
-            logging.info("No new onboarding records found")
-            return
+        try:
+            last_ts = get_last_timestamp(db)
+            logging.info(f"Last watermark timestamp: {last_ts}")
 
-        logging.info(f"Total records fetched: {len(records)}")
+            records = get_onboarding_data(db, last_ts)
 
-        # Step 3: Group by EmployeeCode
-        emp_groups = defaultdict(list)
+            if not records:
+                logging.info(f"No new onboarding records found for {db['name']}")
+                continue
+            logging.info(f"Total records fetched: {len(records)}")
 
-        for r in records:
-            emp_groups[r["EmployeeCode"]].append(r)
+            emp_groups = defaultdict(list)
 
-        grouped_records = list(emp_groups.values())
+            for r in records:
+                emp_groups[r["EmployeeCode"]].append(r)
 
-        # Step 4: Batch processing
-        batch_size = BATCH_SIZE
+            grouped_records = list(emp_groups.values())
 
-        for i in range(0, len(grouped_records), batch_size):
+            batch_size = BATCH_SIZE
 
-            batch_group = grouped_records[i:i + batch_size]
-            flat_batch = []
+            for i in range(0, len(grouped_records), batch_size):
 
-            for sublist in batch_group:
-                for item in sublist:
+                batch_group = grouped_records[i:i + batch_size]
+                flat_batch = []
 
-                    new_item = {}
+                for sublist in batch_group:
+                    for item in sublist:
 
-                    for k, v in item.items():
+                        new_item = {}
 
-                        if isinstance(v, (datetime, date)):
-                            new_item[k] = v.isoformat()
+                        for k, v in item.items():
 
-                        elif isinstance(v, Decimal):
-                            new_item[k] = float(v)
+                            if isinstance(v, (datetime, date)):
+                                new_item[k] = v.isoformat()
 
-                        else:
-                            new_item[k] = v
+                            elif isinstance(v, Decimal):
+                                new_item[k] = float(v)
 
-                    flat_batch.append(new_item)
+                            else:
+                                new_item[k] = v
 
-            payload = {"records": flat_batch}
+                        flat_batch.append(new_item)
 
-            send_to_queue(payload)
+                payload = {
+                    "records": flat_batch,
+                    "subscription_name": db["subscription_name"]           
+                }
 
-        logging.info("All batches pushed to queue")
+                send_to_queue(payload)
 
-    except Exception as e:
-        logging.error(f"Timer error: {str(e)}")
+            logging.info("All batches pushed to queue")
+
+        except Exception as e:
+            logging.error(f"Timer error: {str(e)}")
 
     logging.info("========== ONBOARDING TIMER FINISHED ==========")
-
 
 # =========================================================
 # ---------------- QUEUE TRIGGER ---------------------------
@@ -110,6 +109,27 @@ def process_onboarding_batch(azqueue: func.QueueMessage):
 
     try:
         payload = json.loads(azqueue.get_body().decode("utf-8"))
+
+        logging.info(
+            f"Received payload: {json.dumps(payload)}"
+        )
+
+        subscription_name = payload["subscription_name"]
+
+        db_config = next(
+            (
+                db
+                for db in DATABASES
+                if db["subscription_name"] == subscription_name
+            ),
+            None
+        )
+
+        if not db_config:
+            raise Exception(
+                f"No DB configuration found for subscription {subscription_name}"
+            )
+
         records = payload.get("records", [])
 
         if not records:
@@ -118,7 +138,6 @@ def process_onboarding_batch(azqueue: func.QueueMessage):
 
         batch_size = len(records)
 
-        # Step 1: Get max timestamp for watermark update
         try:
             max_ts = max(
                 datetime.fromisoformat(str(r.get("updateDate_timestamp")))
@@ -128,32 +147,29 @@ def process_onboarding_batch(azqueue: func.QueueMessage):
         except Exception:
             max_ts = datetime.now()
 
-        # Step 2: Transform based on COUNTRY
-        emp_data = transform_records(records, COUNTRY)
+        emp_data = transform_records(records, db_config["country"])
 
-        # Step 3: Final payload
         final_payload = {
             "emp_data": emp_data,
-            "subscription_name": SUBSCRIPTION_NAME
+            "subscription_name": db_config["subscription_name"]
         }
 
         logging.info(f"Final Payload Sample: {json.dumps(final_payload)[:1000]}")
 
-        # Step 4: Call API
         status_code, response = call_onboard_api(final_payload)
 
         logging.info(f"API Status: {status_code}")
         logging.info(f"API Response: {response}")
 
-        # Step 5: Logging & watermark
         if status_code == 200:
 
-            log_batch(batch_size, "SUCCESS","",1,json.dumps(final_payload))
-            update_last_timestamp(max_ts)
+            log_batch(db_config,batch_size, "SUCCESS","",1,json.dumps(final_payload))
+            update_last_timestamp(db_config,max_ts)
 
         else:
-            log_batch(batch_size, "FAILED",response,0,json.dumps(final_payload))
-            raise Exception(f"API failed with status {status_code}")
+            log_batch(db_config,batch_size, "FAILED",response,0,json.dumps(final_payload))
+            logging.error(f"API failed for {db_config['name']} with status {status_code}")
+            return
 
     except Exception as e:
         logging.error(f"Queue processing error: {str(e)}")

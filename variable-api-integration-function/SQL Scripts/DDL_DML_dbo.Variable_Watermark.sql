@@ -6,5 +6,5 @@ CREATE TABLE dbo.variable_watermark
 	[source_db] VARCHAR(50)
 );
 
---Insert Into dbo.variable_watermark ([last_timestamp],[source_db]) Values(NULL,'ELCM_SBFCP3')
+--Insert Into dbo.variable_watermark ([last_timestamp],[source_db]) Values('2026-06-16 16:23:41.230','ELCM_SBFCP3')
 

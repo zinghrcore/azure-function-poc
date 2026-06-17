@@ -23,7 +23,9 @@ SCHEDULE = os.getenv("TIMER_SCHEDULE")
 
 app = func.FunctionApp()
 
+# -----------------------------------------------
 # ---------------- TIMER TRIGGER ----------------
+# -----------------------------------------------
 
 @app.timer_trigger(schedule=SCHEDULE, arg_name="myTimer", run_on_startup=False)
 def attendance_timer(myTimer: func.TimerRequest):
@@ -103,7 +105,9 @@ def attendance_timer(myTimer: func.TimerRequest):
 
     logging.info("========== TIMER TRIGGER FINISHED ==========")
 
+# -----------------------------------------------
 # ---------------- QUEUE TRIGGER ----------------
+# -----------------------------------------------
 
 @app.queue_trigger(
     arg_name="azqueue",

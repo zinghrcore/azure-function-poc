@@ -1,5 +1,5 @@
 
-CREATE PROCEDURE dbo.uspGetAttendanceData
+CREATE OR ALTER PROCEDURE dbo.uspGetAttendanceData
 @LastTimestamp DATETIME = NULL
 AS
 BEGIN

@@ -2,7 +2,6 @@ import azure.functions as func
 import os
 import logging
 import json
-import uuid
 import time
 
 from decimal import Decimal
@@ -164,22 +163,6 @@ def process_overtime_batch(azqueue: func.QueueMessage):
         max_ts = datetime.fromisoformat(max_ts_str)
 
         max_ts = max_ts + timedelta(microseconds=1)
-
-        #overtime_data = []
-
-        #for row in records:
-
-        #    if not row.get("EmployeeCode") or not row.get("Date"):
-        #        continue
-
-        #    overtime_data.append({
-        #        "employee_id": int(row.get("EmployeeCode")),
-        #        "date": str(row.get("Date"))[:10],
-        #        "code": row.get("Code"),
-        #        "conversion": row.get("Conversion"),
-        #        "ot": float(row.get("ExtraHrs", 0)),
-        #        "ot_pay": float(row.get("ExtraTimePay", 0))
-        #    })
 
         # ---------------- CLEAN DATA ----------------
 
