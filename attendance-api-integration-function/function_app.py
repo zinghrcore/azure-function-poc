@@ -1,7 +1,7 @@
 import azure.functions as func
 import logging
 import json
-import uuid
+import os
 import time as tm
 
 from decimal import Decimal
@@ -18,16 +18,19 @@ from shared.db_helper import (
 
 from shared.queue_helper import send_to_queue
 
+QUEUE_NAME = os.getenv("QUEUE_NAME")
+SCHEDULE = os.getenv("TIMER_SCHEDULE")
+
 app = func.FunctionApp()
 
 # ---------------- TIMER TRIGGER ----------------
 
-@app.timer_trigger(schedule="0 */5 * * * *", arg_name="myTimer", run_on_startup=False)
+@app.timer_trigger(schedule=SCHEDULE, arg_name="myTimer", run_on_startup=False)
 def attendance_timer(myTimer: func.TimerRequest):
 
     logging.info("========== TIMER TRIGGER STARTED ==========")
 
-    tm.sleep(5)
+    tm.sleep(2)
 
     try:
 
@@ -54,7 +57,7 @@ def attendance_timer(myTimer: func.TimerRequest):
             for r in records:
                 r["source_db"] = db_name
 
-            batch_size = 250
+            batch_size = int(os.getenv("BATCH_SIZE", "250"))
 
             for i in range(0, len(records), batch_size):
 
@@ -104,7 +107,7 @@ def attendance_timer(myTimer: func.TimerRequest):
 
 @app.queue_trigger(
     arg_name="azqueue",
-    queue_name="attendance-queue",
+    queue_name=QUEUE_NAME,
     connection="AzureWebJobsStorage"
 )
 def process_attendance_batch(azqueue: func.QueueMessage):

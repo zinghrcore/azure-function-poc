@@ -112,4 +112,5 @@ def log_batch(db, batch_size, status, details,IsBatchComplete,payload):
     )
 
     conn.commit()
+    cursor.close()
     conn.close()

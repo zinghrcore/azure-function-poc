@@ -2,14 +2,15 @@ import os
 import requests
 import logging
 
-API_URL = os.getenv("API_URL")
-API_TIMEOUT = int(os.getenv("API_TIMEOUT", "180"))
-
 HEADERS = {
     "Content-Type": "application/json"
 }
 
 def call_attendance_api(payload):
+
+    API_URL = os.getenv("API_URL")
+    API_TIMEOUT = int(os.getenv("API_TIMEOUT", "180"))
+
     try:
 
         if not API_URL:

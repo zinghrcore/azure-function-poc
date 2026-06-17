@@ -2,7 +2,7 @@ import json
 import os
 from azure.storage.queue import QueueClient
 
-QUEUE_NAME = "attendance-queue"
+QUEUE_NAME = os.getenv("QUEUE_NAME")
 
 def send_to_queue(message: dict):
     conn_str = os.getenv("AzureWebJobsStorage")
